@@ -1,0 +1,44 @@
+name: TP4 pruebas y despliegue
+on:
+  push:
+    branches: [main]
+    paths: ['TP4/**', '.github/workflows/tp4-pages.yml']
+  pull_request:
+    paths: ['TP4/**', '.github/workflows/tp4-pages.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: tp4-pages-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: TP4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          path: TP4/dist
+  publicar:
+    needs: pruebas
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - uses: actions/deploy-pages@v4
+        id: deploy
